@@ -87,3 +87,15 @@ http_archive(
 	strip_prefix = "scclib-sqlite-master",
 	urls = ["https://github.com/stablecc/scclib-sqlite/archive/refs/heads/master.zip"],
 )
+
+# https://github.com/grpc/grpc
+http_archive(
+	name = "com_github_grpc_grpc",
+	sha256 = "f0b7c282506ec6c72c2a14226287288beda8f614949bd9cd5907cf23429e8f31",
+	strip_prefix = "grpc-master",
+	urls = ["https://github.com/grpc/grpc/archive/refs/heads/master.zip"],
+)
+load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
+grpc_deps()
+load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
+grpc_extra_deps()

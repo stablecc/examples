@@ -1,0 +1,14 @@
+syntax = "proto3";
+package scc;
+
+message HealthRequest {
+  optional string message = 1;
+}
+
+message HealthReply {
+  optional string message = 1;
+}
+
+service Command {
+  rpc Health(HealthRequest) returns (HealthReply);
+}

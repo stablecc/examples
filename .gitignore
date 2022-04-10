@@ -1,6 +1,9 @@
 .*/
 **/bazel-*
+venv/
 docs/
 bin/
 obj/
 *.gcov
+*.pyc
+__pycache__

@@ -1,0 +1,61 @@
+# BSD 3-Clause License
+# 
+# Copyright (c) 2022, Stable Cloud Computing, Inc.
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+# 
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+# 
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+package(default_visibility = ["//visibility:public"])
+
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@com_github_grpc_grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
+load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_grpc_library", "py_proto_library")
+
+proto_library(
+	name = "scc_proto",
+	srcs = ["scc.proto"],
+)
+
+cc_proto_library(
+	name = "scc_cc_proto",
+	deps = [":scc_proto"],
+)
+
+cc_grpc_library(
+	name = "scc_cc_grpc",
+	srcs = [":scc_proto"],
+	grpc_only = True,
+	deps = [":scc_cc_proto"],
+)
+
+py_proto_library(
+	name = "scc_py_pb2",
+	deps = [":scc_proto"],
+)
+
+py_grpc_library(
+	name = "scc_py_pb2_grpc",
+	srcs = [":scc_proto"],
+	deps = [":scc_py_pb2"],
+)

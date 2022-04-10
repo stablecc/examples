@@ -1,5 +1,5 @@
 \mainpage scclib examples documentation
-# example software for the stable cloud computing library (scclib)
+# software examples using scclib
 
 ## licensing
 
@@ -13,3 +13,5 @@ External and redistributable:
 * [ipp and ippcp](lic/intel.txt)
 * [zlib](lic/zlib.txt)
 * [sqlite](lic/sqlite.txt)
+* [protobuf](lic/protobuf.txt)
+* [grpc](lic/grpc.txt)
