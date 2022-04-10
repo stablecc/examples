@@ -93,6 +93,10 @@ GrpcClient::GrpcClient(const std::string& host, unsigned port)
 	m_cmd.reset(new CommandClient(grpc::CreateChannel(s.str(), grpc::InsecureChannelCredentials())));
 }
 
+GrpcClient::~GrpcClient()
+{
+}
+
 std::string GrpcClient::health(const std::string& message)
 {
 	return m_cmd->Health(message);

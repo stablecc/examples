@@ -34,7 +34,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <future>
 #include <signal.h>
 #include <util/logger.h>
-#include <util/event.h>
 #if defined(GRPC_SYNC_SERV)
 #include "grpc_sync_server.h"
 #elif defined(GRPC_ASYNC_SERV)
@@ -44,7 +43,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using std::cerr;
 using std::endl;
 using scc::util::Logger;
-using scc::util::Event;
 
 int main(int argc, char **argv)
 {
@@ -107,20 +105,19 @@ int main(int argc, char **argv)
 	Logger log;
 	log.add_cout();
 
-	Event shut;
 	#if defined(GRPC_SYNC_SERV)
-	CommandServer &serv = GrpcSyncServer::get();
+	auto serv = GrpcSyncServer::get(host, port, threads);
 	#elif defined(GRPC_ASYNC_SERV)
-	CommandServer &serv = GrpcAsyncServer::get();
+	auto serv = GrpcAsyncServer::get(host, port, threads);
 	#else
 	throw std::runtime_error("no server specified")
 	#endif
 
-	log << "using: " << serv.server_name() << endl;
+	log << "using: " << serv->server_name() << endl;
 
-	auto fut = std::async([&]()
+	auto fut = std::async([&serv]()
 	{
-		serv.serve(host, port, shut, threads);
+		serv->serve();
 	});
 
 	sigset_t sigs;
@@ -155,7 +152,7 @@ int main(int argc, char **argv)
 
 	log << "signal server exit" << endl;
 
-	shut.write(1);
+	serv->shut();
 	fut.wait();
 
 	log << "server shut down" << endl;

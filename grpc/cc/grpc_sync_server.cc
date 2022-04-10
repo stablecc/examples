@@ -31,9 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "grpc_sync_server.h"
 #include <string>
 #include <sstream>
-#include <future>
 #include <system_error>
-#include <util/event.h>
 #include <util/logger.h>
 
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
@@ -68,10 +66,47 @@ class CommandServiceImpl final : public Command::Service
 	}
 };
 
-CommandServer& GrpcSyncServer::get()
+std::unique_ptr<CommandServer> GrpcSyncServer::get(const std::string& host, unsigned port, int max_threads)
 {
-	static GrpcSyncServer one;
-	return one;
+	return std::unique_ptr<CommandServer>(new GrpcSyncServer(host, port, max_threads));
+}
+
+struct GrpcSyncServerInt
+{
+	CommandServiceImpl service;
+	std::unique_ptr<Server> server;
+};
+
+GrpcSyncServer::GrpcSyncServer(const std::string& host, unsigned port, int max_threads)
+{
+	Logger log;
+	log.add_cout();
+
+	m_ctx.reset(new GrpcSyncServerInt);
+
+	std::stringstream s;
+	s << host << ":" << port;
+
+	grpc::EnableDefaultHealthCheckService(true);
+	grpc::reflection::InitProtoReflectionServerBuilderPlugin();
+	
+	ServerBuilder builder;
+	if (max_threads < 1)
+	{
+		throw std::runtime_error("max threads value must be > 0");
+	}
+
+	builder.SetSyncServerOption(ServerBuilder::MAX_POLLERS, max_threads);
+	builder.AddListeningPort(s.str(), grpc::InsecureServerCredentials());
+	builder.RegisterService(&m_ctx->service);
+
+	log << "serving at " << s.str() << " with max " << max_threads << " threads" << endl;
+
+	m_ctx->server = builder.BuildAndStart();
+}
+
+GrpcSyncServer::~GrpcSyncServer()
+{
 }
 
 std::string GrpcSyncServer::server_name() const
@@ -79,49 +114,25 @@ std::string GrpcSyncServer::server_name() const
 	return "grpc syncronous Health server (using grpc::ServerBuilder with Command::Service)";
 }
 
-void GrpcSyncServer::serve(const std::string& host, unsigned port, scc::util::Event& shut, int max_threads) const
+void GrpcSyncServer::serve()
 {
 	Logger log;
 	log.add_cout();
 
-	std::stringstream s;
-	s << host << ":" << port;
+	log << "server wait for shutdown" << endl;
 
-	CommandServiceImpl service;
+	m_ctx->server->Wait();
 
-	grpc::EnableDefaultHealthCheckService(true);
-	grpc::reflection::InitProtoReflectionServerBuilderPlugin();
-	ServerBuilder builder;
-	if (max_threads < 1)
-	{
-		throw std::runtime_error("max threads value must be > 0");
-	}
-	builder.SetSyncServerOption(ServerBuilder::MAX_POLLERS, max_threads);
-	builder.AddListeningPort(s.str(), grpc::InsecureServerCredentials());
-	builder.RegisterService(&service);
+	log << "server shut" << endl;
+}
 
-	log << "serving at " << s.str() << " with max " << max_threads << " threads" << endl;
-
-	std::unique_ptr<Server> server(builder.BuildAndStart());
+void GrpcSyncServer::shut()
+{
+	Logger log;
+	log.add_cout();
 	
-	auto fut = std::async([&server]()
-	{
-		Logger tlog;
-		tlog.add_cout();
-
-		tlog << "waiting for server to stop" << endl;
-		server->Wait();
-		tlog << "server stopped" << endl;
-	});
-
-	log << "waiting for halt event" << endl;
-
-	shut.read();
-
 	log << "shutting server" << endl;
-	server->Shutdown();
-
-	fut.wait();
+	m_ctx->server->Shutdown();
 
 	log << "server done" << endl;
 }

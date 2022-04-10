@@ -32,16 +32,27 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define _GRPC_ASYNC_SERVER_H
 
 #include "server.h"
+#include <memory>
+
+struct GrpcAsyncServerInt;
 
 class GrpcAsyncServer : public CommandServer
 {
-	GrpcAsyncServer() {}
+	std::unique_ptr<GrpcAsyncServerInt> m_ctx;
+	GrpcAsyncServer(const std::string&, unsigned, int);
 public:
-	GrpcAsyncServer &operator=(GrpcAsyncServer const &) = delete;
+	GrpcAsyncServer& operator=(GrpcAsyncServer const &) = delete;
+	virtual ~GrpcAsyncServer();
 
-	static CommandServer& get();
+	/** Gets and starts the singleton command server.
+		\param host Hostname or address
+		\param port Port
+		\param threads Polling threads to service requests.
+	*/
+	static std::unique_ptr<CommandServer> get(const std::string&, unsigned, int);
 
-	void serve(const std::string&, unsigned, scc::util::Event&, int) const;
+	void serve();
+	void shut();
 	std::string server_name() const;
 };
 

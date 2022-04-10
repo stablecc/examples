@@ -28,8 +28,8 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef _GRPC_ASYNC_SERVER_H
-#define _GRPC_ASYNC_SERVER_H
+#ifndef _GRPC_CLIENT_H
+#define _GRPC_CLIENT_H
 
 #include <string>
 #include <memory>
@@ -41,7 +41,8 @@ class GrpcClient
 	std::unique_ptr<CommandClient> m_cmd;
 public:
 	GrpcClient(const std::string&, unsigned);
-
+	virtual ~GrpcClient();
+	
 	std::string health(const std::string&);
 };
 

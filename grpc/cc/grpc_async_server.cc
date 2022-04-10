@@ -33,7 +33,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sstream>
 #include <future>
 #include <system_error>
-#include <util/event.h>
 #include <util/logger.h>
 
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
@@ -110,21 +109,28 @@ public:
 	}
 };
 
-CommandServer& GrpcAsyncServer::get()
+std::unique_ptr<CommandServer>  GrpcAsyncServer::get(const std::string& host, unsigned port, int max_threads)
 {
-	static GrpcAsyncServer one;
-	return one;
+	return std::unique_ptr<CommandServer>(new GrpcAsyncServer(host, port, max_threads));
 }
 
-std::string GrpcAsyncServer::server_name() const
+struct GrpcAsyncServerInt
 {
-	return "grpc asyncronous Health server (using grpc::ServerBuilder with Command::AsyncService)";
-}
+	Command::AsyncService service;
+	std::unique_ptr<ServerCompletionQueue> cq;
+	std::unique_ptr<Server> server;
+	int max_threads;
+	std::vector<std::future<void>> procs;
+};
 
-void GrpcAsyncServer::serve(const std::string& host, unsigned port, scc::util::Event& shut, int max_threads) const
+GrpcAsyncServer::GrpcAsyncServer(const std::string& host, unsigned port, int max_threads)
 {
 	Logger log;
 	log.add_cout();
+
+	m_ctx.reset(new GrpcAsyncServerInt);
+
+	m_ctx->max_threads = max_threads;
 
 	std::stringstream s;
 	s << host << ":" << port;
@@ -137,33 +143,36 @@ void GrpcAsyncServer::serve(const std::string& host, unsigned port, scc::util::E
 
 	builder.AddListeningPort(s.str(), grpc::InsecureServerCredentials());
 
-	Command::AsyncService service;
-	builder.RegisterService(&service);
+	builder.RegisterService(&m_ctx->service);
 
-	std::unique_ptr<ServerCompletionQueue> cq;
-	cq = builder.AddCompletionQueue();
+	m_ctx->cq = builder.AddCompletionQueue();
 
-	std::unique_ptr<Server> server(builder.BuildAndStart());
+	m_ctx->server = builder.BuildAndStart();
 
 	log << "serving at " << s.str() << " with max " << max_threads << " threads" << endl;
+}
 
-	auto fut = std::async([&server]()
-	{
-		Logger tlog;
-		tlog.add_cout();
+GrpcAsyncServer::~GrpcAsyncServer()
+{
+}
 
-		tlog << "waiting for server to stop" << endl;
-		server->Wait();
-		tlog << "server stopped" << endl;
-	});
+std::string GrpcAsyncServer::server_name() const
+{
+	return "grpc asyncronous Health server (using grpc::ServerBuilder with Command::AsyncService)";
+}
+
+void GrpcAsyncServer::serve()
+{
+	Logger log;
+	log.add_cout();
 
 	auto procRun = [&]()
 	{
-		new RequestProcessor(&service, cq.get());		// request processors add themselves to the queue
-														// and are self-deleting
+		new RequestProcessor(&m_ctx->service, m_ctx->cq.get());		// request processors add themselves to the queue
+																	// and are self-deleting
 		RequestProcessor* rp;
 		bool ok;
-		while (cq->Next((void**)&rp, &ok))				// returns true until cq is drained and shut down
+		while (m_ctx->cq->Next((void**)&rp, &ok))					// returns true until cq is drained and shut down
 		{
 			if (ok)
 			{
@@ -172,26 +181,31 @@ void GrpcAsyncServer::serve(const std::string& host, unsigned port, scc::util::E
 		}
 	};
 
-	std::vector<std::future<void>> procs;
+	log << "server starting " << m_ctx->max_threads << " processors" << endl;
 
-	for (int i = 0; i < max_threads; i++)
+	for (int i = 0; i < m_ctx->max_threads; i++)
 	{
-		procs.push_back(std::async(procRun));
+		m_ctx->procs.push_back(std::async(procRun));
 	}
 
-	log << "waiting for halt event" << endl;
+	log << "server wait for shutdown" << endl;
 
-	shut.read();
+	m_ctx->server->Wait();
+}
+
+void GrpcAsyncServer::shut()
+{
+	Logger log;
+	log.add_cout();
 
 	log << "shutting server" << endl;
-	server->Shutdown();
+	m_ctx->server->Shutdown();
 	
-	fut.wait();
-
 	log << "shutting queue" << endl;
-	cq->Shutdown();
+	m_ctx->cq->Shutdown();
 
-	for (auto& p : procs)
+	log << "waiting for processors" << endl;
+	for (auto& p : m_ctx->procs)
 	{
 		p.wait();
 	}

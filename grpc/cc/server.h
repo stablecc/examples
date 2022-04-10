@@ -32,19 +32,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define _SERVER_H
 
 #include <string>
-#include <util/event.h>
 
 class CommandServer
 {
 public:
-	/** Serve a request
-		\param host Hostname or address
-		\param port Port
-		\param shut Event which will cause the server to shut down
-		\param threads Number of polling threads to service requests
+	/** Starts request processing and waits for server shutdown signal.
 	*/
-	virtual void serve(const std::string&, unsigned, scc::util::Event&, int) const = 0;
-	/** Friendly name of this server
+	virtual void serve() = 0;
+	/** Signal server shutdown.
+	*/
+	virtual void shut() = 0;
+	/** Friendly name of this server.
 	*/
 	virtual std::string server_name() const = 0;
 };

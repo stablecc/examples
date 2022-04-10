@@ -28,9 +28,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package(default_visibility = ["//visibility:public"])
 
-
 cc_binary(
-	name = "client",
+	name = "syncclient",
 	srcs = [
 		"grpc_client.cc",
 		"grpc_client.h",
@@ -57,7 +56,7 @@ cc_binary(
 	linkopts = ["-pthread"],
 	deps = [
 		"@com_stablecc_scclib//util:sccutillib",
-		":grpc_sync_serv"
+		":grpc_sync_serv",
 	]
 )
 
@@ -73,7 +72,7 @@ cc_binary(
 	linkopts = ["-pthread"],
 	deps = [
 		"@com_stablecc_scclib//util:sccutillib",
-		":grpc_async_serv"
+		":grpc_async_serv",
 	]
 )
 
@@ -104,6 +103,29 @@ cc_library(
 	copts = ["-std=c++17"],
 	linkopts = ["-pthread"],
 	deps = [
+		"@com_stablecc_scclib//util:sccutillib",
+		"@com_github_grpc_grpc//:grpc++",
+		"@com_github_grpc_grpc//:grpc++_reflection",
+		"//grpc/proto:scc_cc_grpc",
+	]
+)
+
+cc_test(
+	name = "test_all",
+	srcs = [
+		"test.cc",
+		"grpc_client.cc",
+		"grpc_client.h",
+		"server.h",
+		"grpc_async_server.cc",
+		"grpc_async_server.h",
+		"grpc_sync_server.cc",
+		"grpc_sync_server.h",
+	],
+	copts = ["-std=c++17"],
+	linkopts = ["-pthread"],
+	deps = [
+		"@com_google_googletest//:gtest_main",
 		"@com_stablecc_scclib//util:sccutillib",
 		"@com_github_grpc_grpc//:grpc++",
 		"@com_github_grpc_grpc//:grpc++_reflection",

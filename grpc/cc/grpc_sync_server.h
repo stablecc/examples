@@ -32,16 +32,27 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define _GRPC_SYNC_SERVER_H
 
 #include "server.h"
+#include <memory>
+
+class GrpcSyncServerInt;
 
 class GrpcSyncServer : public CommandServer
 {
-	GrpcSyncServer() {}
+	std::unique_ptr<GrpcSyncServerInt> m_ctx;
+	GrpcSyncServer(const std::string&, unsigned, int);
 public:
-	GrpcSyncServer &operator=(GrpcSyncServer const &) = delete;
+	GrpcSyncServer& operator=(GrpcSyncServer const &) = delete;
+	virtual ~GrpcSyncServer();
 
-	static CommandServer& get();
+	/** Gets and starts the singleton command server.
+		\param host Hostname or address
+		\param port Port
+		\param threads Polling threads to service requests.
+	*/
+	static std::unique_ptr<CommandServer> get(const std::string&, unsigned, int);
 
-	void serve(const std::string&, unsigned, scc::util::Event&, int) const;
+	void serve();
+	void shut();
 	std::string server_name() const;
 };
 
