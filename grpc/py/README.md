@@ -1,6 +1,6 @@
-# python rpc example
+# python grpc example
 
-Requires installation of grpc:
+Requires installation of grpc in python:
 ```
 $ python3 -m venv venv # create virtual environment
 $ . venv/bin/activate
