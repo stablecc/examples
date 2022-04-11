@@ -20,62 +20,41 @@ using std::stringstream;
 using std::async;
 using scc::util::Logger;
 
-struct GrpcTest : public testing::Test
+TEST(GrpcTest, async_single)
 {
-	std::unique_ptr<CommandServer> async_serv;
-	std::unique_ptr<CommandServer> sync_serv;
-	std::future<void> fut_async;
-	std::future<void> fut_sync;
-
-	GrpcTest()
-	:	async_serv(GrpcAsyncServer::get("0.0.0.0", 15430, 10)),
-		sync_serv(GrpcSyncServer::get("0.0.0.0", 15431, 10))
+	auto serv = GrpcAsyncServer::get("0.0.0.0", 12345, 10);
+	auto fut = std::async([&]()
 	{
-		fut_async = std::async([&]()
-		{
-			async_serv->serve();
-		});
-		
-		fut_sync = std::async([&]()
-		{
-			sync_serv->serve();
-		});
-	}
+		serv->serve();
+	});
 
-	virtual ~GrpcTest()
-	{
-		async_serv->shut();
-		fut_async.wait();
-		
-		sync_serv->shut();
-		fut_sync.wait();
-	}
-};
-
-TEST_F(GrpcTest, do_nothing)
-{
-}
-
-TEST_F(GrpcTest, async_single)
-{
 	Logger log;
 	log.add_cout();
 
-	GrpcClient client("127.0.0.1", 15430);
+	GrpcClient client("127.0.0.1", 12345);
 	string message("async_single");
 	string r = client.health(message);
 	log << "HealthRequest( " << message << " ) -> HealthReply( " << r << " )" << endl;
 	ASSERT_EQ(message, r);
+
+	serv->shut();
+	fut.wait();
 }
 
-TEST_F(GrpcTest, async_multi)
+TEST(GrpcTest, async_multi)
 {
+	auto serv = GrpcAsyncServer::get("0.0.0.0", 12345, 10);
+	auto fut = std::async([&]()
+	{
+		serv->serve();
+	});
+
 	Logger log;
 	log.add_cout();
 
 	auto reqf = [](string m) -> string
 	{
-		GrpcClient client("127.0.0.1", 15430);
+		GrpcClient client("127.0.0.1", 12345);
 		string r = client.health(m);
 
 		Logger log;
@@ -109,28 +88,46 @@ TEST_F(GrpcTest, async_multi)
 	std::sort(v.begin(), v.end());
 
 	ASSERT_EQ(v, ver);
+
+	serv->shut();
+	fut.wait();
 }
 
-TEST_F(GrpcTest, sync_single)
+TEST(GrpcTest, sync_single)
 {
+	auto serv = GrpcSyncServer::get("0.0.0.0", 12345, 10);
+	auto fut = std::async([&]()
+	{
+		serv->serve();
+	});
+
 	Logger log;
 	log.add_cout();
 
-	GrpcClient client("127.0.0.1", 15431);
+	GrpcClient client("127.0.0.1", 12345);
 	string message("sync_single");
 	string r = client.health(message);
 	log << "HealthRequest( " << message << " ) -> HealthReply( " << r << " )" << endl;
 	ASSERT_EQ(message, r);
+
+	serv->shut();
+	fut.wait();
 }
 
-TEST_F(GrpcTest, sync_multi)
+TEST(GrpcTest, sync_multi)
 {
+	auto serv = GrpcSyncServer::get("0.0.0.0", 12345, 10);
+	auto fut = std::async([&]()
+	{
+		serv->serve();
+	});
+
 	Logger log;
 	log.add_cout();
 
 	auto reqf = [](string m) -> string
 	{
-		GrpcClient client("127.0.0.1", 15431);
+		GrpcClient client("127.0.0.1", 12345);
 		string r = client.health(m);
 
 		Logger log;
@@ -164,4 +161,7 @@ TEST_F(GrpcTest, sync_multi)
 	std::sort(v.begin(), v.end());
 
 	ASSERT_EQ(v, ver);
+
+	serv->shut();
+	fut.wait();
 }
