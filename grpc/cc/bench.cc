@@ -3,45 +3,77 @@
 #include "grpc_async_server.h"
 #include "grpc_sync_server.h"
 #include <future>
+#include <vector>
+#include <memory>
+#include <string>
 
-static void BM_Async(benchmark::State& state)
+struct AsyncFixture : public benchmark::Fixture
 {
-	auto serv = GrpcAsyncServer::get("0.0.0.0", 15430, 10);
-	auto fut = std::async([&]()
+	std::future<void> fut;
+	std::unique_ptr<CommandServer> serv;
+	std::unique_ptr<GrpcClient> cli;
+	std::string msg;
+
+	void SetUp(const benchmark::State& state)
 	{
-		serv->serve();
-	});
+		serv = GrpcAsyncServer::get("0.0.0.0", 15430, state.range(0));
+		fut = std::async([&]()
+		{
+			serv->serve();
+		});
+		cli.reset(new GrpcClient("127.0.0.1", 15430));
+		msg.resize(state.range(1), 'X');
+	}
+	void TearDown(const benchmark::State& state)
+	{
+		serv->shut();
+		fut.wait();
+	}
+};
 
-	GrpcClient client("127.0.0.1", 15430);
-
+BENCHMARK_DEFINE_F(AsyncFixture, Request)(benchmark::State& state)
+{
 	for (auto _ : state)
 	{
-		client.health("");
+		cli->health(msg);
 	}
-
-	serv->shut();
-	fut.wait();
+	state.SetBytesProcessed(state.iterations()*state.range(1));
+	state.SetItemsProcessed(state.iterations());
 }
 
-BENCHMARK(BM_Async)->UseRealTime();
+BENCHMARK_REGISTER_F(AsyncFixture, Request)->Args({2, 1024})->Args({5, 1024})->Args({10, 1024})->Args({2, 10*1024})->Args({5, 10*1024})->Args({10, 10*1024});
 
-static void BM_Sync(benchmark::State& state)
+struct SyncFixture : public benchmark::Fixture
 {
-	auto serv = GrpcSyncServer::get("0.0.0.0", 15430, 10);
-	auto fut = std::async([&]()
+	std::future<void> fut;
+	std::unique_ptr<CommandServer> serv;
+	std::unique_ptr<GrpcClient> cli;
+	std::string msg;
+
+	void SetUp(const benchmark::State& state)
 	{
-		serv->serve();
-	});
+		serv = GrpcSyncServer::get("0.0.0.0", 15430, state.range(0));
+		fut = std::async([&]()
+		{
+			serv->serve();
+		});
+		cli.reset(new GrpcClient("127.0.0.1", 15430));
+	}
+	void TearDown(const benchmark::State& state)
+	{
+		serv->shut();
+		fut.wait();
+	}
+};
 
-	GrpcClient client("127.0.0.1", 15430);
-
+BENCHMARK_DEFINE_F(SyncFixture, Request)(benchmark::State& state)
+{
 	for (auto _ : state)
 	{
-		client.health("");
+		cli->health(msg);
 	}
-
-	serv->shut();
-	fut.wait();
+	state.SetBytesProcessed(state.iterations()*state.range(1));
+	state.SetItemsProcessed(state.iterations());
 }
 
-BENCHMARK(BM_Sync)->UseRealTime();
+BENCHMARK_REGISTER_F(SyncFixture, Request)->Args({2, 1024})->Args({5, 1024})->Args({10, 1024})->Args({2, 10*1024})->Args({5, 10*1024})->Args({10, 10*1024});

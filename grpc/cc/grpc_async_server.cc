@@ -109,9 +109,9 @@ public:
 	}
 };
 
-std::unique_ptr<CommandServer>  GrpcAsyncServer::get(const std::string& host, unsigned port, int max_threads)
+std::unique_ptr<CommandServer>  GrpcAsyncServer::get(const std::string& host, unsigned port, int max_threads, bool verbose)
 {
-	return std::unique_ptr<CommandServer>(new GrpcAsyncServer(host, port, max_threads));
+	return std::unique_ptr<CommandServer>(new GrpcAsyncServer(host, port, max_threads, verbose));
 }
 
 struct GrpcAsyncServerInt
@@ -121,16 +121,21 @@ struct GrpcAsyncServerInt
 	std::unique_ptr<Server> server;
 	int max_threads;
 	std::vector<std::future<void>> procs;
+	bool verbose;
 };
 
-GrpcAsyncServer::GrpcAsyncServer(const std::string& host, unsigned port, int max_threads)
+GrpcAsyncServer::GrpcAsyncServer(const std::string& host, unsigned port, int max_threads, bool verbose)
 {
-	Logger log;
-	log.add_cout();
-
 	m_ctx.reset(new GrpcAsyncServerInt);
 
 	m_ctx->max_threads = max_threads;
+	m_ctx->verbose = verbose;
+
+	Logger log;
+	if (m_ctx->verbose)
+	{
+		log.add_cout();
+	}
 
 	std::stringstream s;
 	s << host << ":" << port;
@@ -164,7 +169,10 @@ std::string GrpcAsyncServer::server_name() const
 void GrpcAsyncServer::serve()
 {
 	Logger log;
-	log.add_cout();
+	if (m_ctx->verbose)
+	{
+		log.add_cout();
+	}
 
 	auto procRun = [&]()
 	{
@@ -196,7 +204,10 @@ void GrpcAsyncServer::serve()
 void GrpcAsyncServer::shut()
 {
 	Logger log;
-	log.add_cout();
+	if (m_ctx->verbose)
+	{
+		log.add_cout();
+	}
 
 	log << "shutting server" << endl;
 	m_ctx->server->Shutdown();

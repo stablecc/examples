@@ -66,23 +66,29 @@ class CommandServiceImpl final : public Command::Service
 	}
 };
 
-std::unique_ptr<CommandServer> GrpcSyncServer::get(const std::string& host, unsigned port, int max_threads)
+std::unique_ptr<CommandServer> GrpcSyncServer::get(const std::string& host, unsigned port, int max_threads, bool verbose)
 {
-	return std::unique_ptr<CommandServer>(new GrpcSyncServer(host, port, max_threads));
+	return std::unique_ptr<CommandServer>(new GrpcSyncServer(host, port, max_threads, verbose));
 }
 
 struct GrpcSyncServerInt
 {
 	CommandServiceImpl service;
 	std::unique_ptr<Server> server;
+	bool verbose;
 };
 
-GrpcSyncServer::GrpcSyncServer(const std::string& host, unsigned port, int max_threads)
+GrpcSyncServer::GrpcSyncServer(const std::string& host, unsigned port, int max_threads, bool verbose)
 {
-	Logger log;
-	log.add_cout();
-
 	m_ctx.reset(new GrpcSyncServerInt);
+
+	m_ctx->verbose = verbose;
+
+	Logger log;
+	if (m_ctx->verbose)
+	{
+		log.add_cout();
+	}
 
 	std::stringstream s;
 	s << host << ":" << port;
@@ -117,7 +123,10 @@ std::string GrpcSyncServer::server_name() const
 void GrpcSyncServer::serve()
 {
 	Logger log;
-	log.add_cout();
+	if (m_ctx->verbose)
+	{
+		log.add_cout();
+	}
 
 	log << "server wait for shutdown" << endl;
 
@@ -129,7 +138,10 @@ void GrpcSyncServer::serve()
 void GrpcSyncServer::shut()
 {
 	Logger log;
-	log.add_cout();
+	if (m_ctx->verbose)
+	{
+		log.add_cout();
+	}
 	
 	log << "shutting server" << endl;
 	m_ctx->server->Shutdown();

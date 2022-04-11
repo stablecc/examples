@@ -39,7 +39,7 @@ struct GrpcAsyncServerInt;
 class GrpcAsyncServer : public CommandServer
 {
 	std::unique_ptr<GrpcAsyncServerInt> m_ctx;
-	GrpcAsyncServer(const std::string&, unsigned, int);
+	GrpcAsyncServer(const std::string&, unsigned, int, bool);
 public:
 	GrpcAsyncServer& operator=(GrpcAsyncServer const &) = delete;
 	virtual ~GrpcAsyncServer();
@@ -49,7 +49,7 @@ public:
 		\param port Port
 		\param threads Polling threads to service requests.
 	*/
-	static std::unique_ptr<CommandServer> get(const std::string&, unsigned, int);
+	static std::unique_ptr<CommandServer> get(const std::string&, unsigned, int, bool = false);
 
 	void serve();
 	void shut();

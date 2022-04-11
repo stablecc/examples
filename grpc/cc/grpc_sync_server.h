@@ -39,7 +39,7 @@ class GrpcSyncServerInt;
 class GrpcSyncServer : public CommandServer
 {
 	std::unique_ptr<GrpcSyncServerInt> m_ctx;
-	GrpcSyncServer(const std::string&, unsigned, int);
+	GrpcSyncServer(const std::string&, unsigned, int, bool);
 public:
 	GrpcSyncServer& operator=(GrpcSyncServer const &) = delete;
 	virtual ~GrpcSyncServer();
@@ -49,7 +49,7 @@ public:
 		\param port Port
 		\param threads Polling threads to service requests.
 	*/
-	static std::unique_ptr<CommandServer> get(const std::string&, unsigned, int);
+	static std::unique_ptr<CommandServer> get(const std::string&, unsigned, int, bool = false);
 
 	void serve();
 	void shut();
