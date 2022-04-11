@@ -132,3 +132,26 @@ cc_test(
 		"//grpc/proto:scc_cc_grpc",
 	]
 )
+
+cc_binary(
+	name = "bench",
+	srcs = [
+		"bench.cc",
+		"grpc_client.cc",
+		"grpc_client.h",
+		"server.h",
+		"grpc_async_server.cc",
+		"grpc_async_server.h",
+		"grpc_sync_server.cc",
+		"grpc_sync_server.h",
+	],
+	copts = ["-std=c++17"],
+	linkopts = ["-pthread"],
+	deps = [
+		"@com_github_google_benchmark//:benchmark_main",
+		"@com_stablecc_scclib//util:sccutillib",
+		"@com_github_grpc_grpc//:grpc++",
+		"@com_github_grpc_grpc//:grpc++_reflection",
+		"//grpc/proto:scc_cc_grpc",
+	]
+)
