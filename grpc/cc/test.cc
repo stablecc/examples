@@ -22,7 +22,7 @@ using scc::util::Logger;
 
 TEST(GrpcTest, async_single)
 {
-	auto serv = GrpcAsyncServer::get("0.0.0.0", 12345, 10);
+	auto serv = GrpcAsyncServer::get("0.0.0.0", 12345, 5, 2, true);
 	auto fut = std::async([&]()
 	{
 		serv->serve();
@@ -43,7 +43,7 @@ TEST(GrpcTest, async_single)
 
 TEST(GrpcTest, async_multi)
 {
-	auto serv = GrpcAsyncServer::get("0.0.0.0", 12345, 10);
+	auto serv = GrpcAsyncServer::get("0.0.0.0", 12345, 5, 2, true);
 	auto fut = std::async([&]()
 	{
 		serv->serve();
@@ -95,7 +95,7 @@ TEST(GrpcTest, async_multi)
 
 TEST(GrpcTest, sync_single)
 {
-	auto serv = GrpcSyncServer::get("0.0.0.0", 12345, 10);
+	auto serv = GrpcSyncServer::get("0.0.0.0", 12345, 5, 2, true);
 	auto fut = std::async([&]()
 	{
 		serv->serve();
@@ -116,7 +116,7 @@ TEST(GrpcTest, sync_single)
 
 TEST(GrpcTest, sync_multi)
 {
-	auto serv = GrpcSyncServer::get("0.0.0.0", 12345, 10);
+	auto serv = GrpcSyncServer::get("0.0.0.0", 12345, 5, 2, true);
 	auto fut = std::async([&]()
 	{
 		serv->serve();

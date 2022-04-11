@@ -66,9 +66,9 @@ class CommandServiceImpl final : public Command::Service
 	}
 };
 
-std::unique_ptr<CommandServer> GrpcSyncServer::get(const std::string& host, unsigned port, int max_threads, bool verbose)
+std::unique_ptr<CommandServer> GrpcSyncServer::get(const std::string& host, unsigned port, int queues, int max_threads, bool verbose)
 {
-	return std::unique_ptr<CommandServer>(new GrpcSyncServer(host, port, max_threads, verbose));
+	return std::unique_ptr<CommandServer>(new GrpcSyncServer(host, port, queues, max_threads, verbose));
 }
 
 struct GrpcSyncServerInt
@@ -78,7 +78,7 @@ struct GrpcSyncServerInt
 	bool verbose;
 };
 
-GrpcSyncServer::GrpcSyncServer(const std::string& host, unsigned port, int max_threads, bool verbose)
+GrpcSyncServer::GrpcSyncServer(const std::string& host, unsigned port, int queues, int max_threads, bool verbose)
 {
 	m_ctx.reset(new GrpcSyncServerInt);
 
@@ -101,12 +101,17 @@ GrpcSyncServer::GrpcSyncServer(const std::string& host, unsigned port, int max_t
 	{
 		throw std::runtime_error("max threads value must be > 0");
 	}
+	if (queues < 1)
+	{
+		throw std::runtime_error("queues value must be > 0");
+	}
 
+	builder.SetSyncServerOption(ServerBuilder::NUM_CQS, queues);
 	builder.SetSyncServerOption(ServerBuilder::MAX_POLLERS, max_threads);
 	builder.AddListeningPort(s.str(), grpc::InsecureServerCredentials());
 	builder.RegisterService(&m_ctx->service);
 
-	log << "serving at " << s.str() << " with max " << max_threads << " threads" << endl;
+	log << "serving at " << s.str() << " with " << queues << " queue(s) and " << max_threads << " thread(s)" << endl;
 
 	m_ctx->server = builder.BuildAndStart();
 }

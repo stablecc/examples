@@ -109,26 +109,26 @@ public:
 	}
 };
 
-std::unique_ptr<CommandServer>  GrpcAsyncServer::get(const std::string& host, unsigned port, int max_threads, bool verbose)
+std::unique_ptr<CommandServer>  GrpcAsyncServer::get(const std::string& host, unsigned port, int queues, int max_threads, bool verbose)
 {
-	return std::unique_ptr<CommandServer>(new GrpcAsyncServer(host, port, max_threads, verbose));
+	return std::unique_ptr<CommandServer>(new GrpcAsyncServer(host, port, queues, max_threads, verbose));
 }
 
 struct GrpcAsyncServerInt
 {
-	Command::AsyncService service;
-	std::unique_ptr<ServerCompletionQueue> cq;
-	std::unique_ptr<Server> server;
-	int max_threads;
-	std::vector<std::future<void>> procs;
 	bool verbose;
+
+	Command::AsyncService service;
+	std::unique_ptr<Server> server;
+
+	std::vector<std::unique_ptr<ServerCompletionQueue>> cqs;		// completion queues
+	std::vector<std::vector<std::future<void>>> procs;				// threads per completion queue
 };
 
-GrpcAsyncServer::GrpcAsyncServer(const std::string& host, unsigned port, int max_threads, bool verbose)
+GrpcAsyncServer::GrpcAsyncServer(const std::string& host, unsigned port, int queues, int max_threads, bool verbose)
 {
 	m_ctx.reset(new GrpcAsyncServerInt);
 
-	m_ctx->max_threads = max_threads;
 	m_ctx->verbose = verbose;
 
 	Logger log;
@@ -145,16 +145,28 @@ GrpcAsyncServer::GrpcAsyncServer(const std::string& host, unsigned port, int max
 	{
 		throw std::runtime_error("max threads value must be > 0");
 	}
+	if (queues < 1)
+	{
+		throw std::runtime_error("queues value must be > 0");
+	}
 
 	builder.AddListeningPort(s.str(), grpc::InsecureServerCredentials());
 
 	builder.RegisterService(&m_ctx->service);
 
-	m_ctx->cq = builder.AddCompletionQueue();
+	for (int i = 0; i < queues; i++)
+	{
+		m_ctx->cqs.push_back(builder.AddCompletionQueue());
+		m_ctx->procs.emplace_back();
+		for (int j = 0; j < max_threads; j++)
+		{
+			m_ctx->procs.back().emplace_back();
+		}
+	}
 
 	m_ctx->server = builder.BuildAndStart();
 
-	log << "serving at " << s.str() << " with max " << max_threads << " threads" << endl;
+	log << "serving at " << s.str() << " with " << queues << " queue(s) and " << max_threads << " thread(s)" << endl;
 }
 
 GrpcAsyncServer::~GrpcAsyncServer()
@@ -174,13 +186,13 @@ void GrpcAsyncServer::serve()
 		log.add_cout();
 	}
 
-	auto procRun = [&]()
+	auto procRun = [&](ServerCompletionQueue* cq)
 	{
-		new RequestProcessor(&m_ctx->service, m_ctx->cq.get());		// request processors add themselves to the queue
+		new RequestProcessor(&m_ctx->service, cq);		// request processors add themselves to the queue
 																	// and are self-deleting
 		RequestProcessor* rp;
 		bool ok;
-		while (m_ctx->cq->Next((void**)&rp, &ok))					// returns true until cq is drained and shut down
+		while (cq->Next((void**)&rp, &ok))				// returns true until cq is drained and shut down
 		{
 			if (ok)
 			{
@@ -189,11 +201,14 @@ void GrpcAsyncServer::serve()
 		}
 	};
 
-	log << "server starting " << m_ctx->max_threads << " processors" << endl;
-
-	for (int i = 0; i < m_ctx->max_threads; i++)
+	for (unsigned i = 0; i < m_ctx->cqs.size(); i++)
 	{
-		m_ctx->procs.push_back(std::async(procRun));
+		log << "server starting completion queue with " << m_ctx->procs[i].size() << " threads" << endl;
+
+		for (unsigned j = 0; j < m_ctx->procs[i].size(); j++)
+		{
+			m_ctx->procs[i][j] = std::async(procRun, m_ctx->cqs[i].get());
+		}
 	}
 
 	log << "server wait for shutdown" << endl;
@@ -212,13 +227,19 @@ void GrpcAsyncServer::shut()
 	log << "shutting server" << endl;
 	m_ctx->server->Shutdown();
 	
-	log << "shutting queue" << endl;
-	m_ctx->cq->Shutdown();
-
-	log << "waiting for processors" << endl;
-	for (auto& p : m_ctx->procs)
+	for (auto& q : m_ctx->cqs)
 	{
-		p.wait();
+		log << "shutting queue" << endl;
+		q->Shutdown();
+	}
+
+	for (auto& pv : m_ctx->procs)
+	{
+		log << "waiting for " << pv.size() << " queue threads" << endl;
+		for (auto& f : pv)
+		{
+			f.wait();
+		}
 	}
 
 	log << "server done" << endl;

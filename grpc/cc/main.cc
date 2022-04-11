@@ -55,15 +55,18 @@ int main(int argc, char **argv)
 	lo[1].has_arg = 1;
 	lo[2].name = "verbose";
 	lo[2].val = 'v';
+	lo[3].name = "queues";
+	lo[3].val = 'q';
+	lo[3].has_arg = 1;
 
 	bool usage = false;
-	int threads = 5;
+	int threads = 2, queues = 1;
 	std::string host="0.0.0.0";
 	unsigned port=1933;
 	bool verbose=false;
 	while (1)
 	{
-		int opt = getopt_long(argc, argv, "?ht:v", &lo[0], nullptr);
+		int opt = getopt_long(argc, argv, "?ht:vq:", &lo[0], nullptr);
 		if (opt == -1)
 		{
 			break;
@@ -81,6 +84,10 @@ int main(int argc, char **argv)
 			if (!optarg)	usage = true;
 			else			threads = atoi(optarg);
 			break;
+		case 'q':
+			if (!optarg)	usage = true;
+			else			queues = atoi(optarg);
+			break;
 		default:
 			usage = true;
 		}
@@ -93,7 +100,8 @@ int main(int argc, char **argv)
 		cerr << "  remote grpc Health server" << endl;
 		cerr << endl;
 		cerr << "      default HOST 0.0.0.0 PORT 5172" << endl;
-		cerr << "      -t --threads max threads to serve requests (default 5)" << endl;
+		cerr << "      -q --queues number of completion queues used to serve requests (default 1)" << endl;
+		cerr << "      -t --threads number of polling threads per queue (default 2)" << endl;
 		cerr << "      -v --verbose verbose output (default off)" << endl;
 		cerr << endl;
 		exit(2);
@@ -114,9 +122,9 @@ int main(int argc, char **argv)
 	log.id("main");
 
 	#if defined(GRPC_SYNC_SERV)
-	auto serv = GrpcSyncServer::get(host, port, threads, verbose);
+	auto serv = GrpcSyncServer::get(host, port, queues, threads, verbose);
 	#elif defined(GRPC_ASYNC_SERV)
-	auto serv = GrpcAsyncServer::get(host, port, threads, verbose);
+	auto serv = GrpcAsyncServer::get(host, port, queues, threads, verbose);
 	#else
 	throw std::runtime_error("no server specified")
 	#endif

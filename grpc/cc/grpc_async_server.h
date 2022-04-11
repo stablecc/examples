@@ -39,7 +39,7 @@ struct GrpcAsyncServerInt;
 class GrpcAsyncServer : public CommandServer
 {
 	std::unique_ptr<GrpcAsyncServerInt> m_ctx;
-	GrpcAsyncServer(const std::string&, unsigned, int, bool);
+	GrpcAsyncServer(const std::string&, unsigned, int, int, bool);
 public:
 	GrpcAsyncServer& operator=(GrpcAsyncServer const &) = delete;
 	virtual ~GrpcAsyncServer();
@@ -47,9 +47,11 @@ public:
 	/** Gets and starts the singleton command server.
 		\param host Hostname or address
 		\param port Port
-		\param threads Polling threads to service requests.
+		\param queues Number of completion queues.
+		\param threads Polling threads per queue used to service requests.
+		\param verbose Verbose server logging (connection only)
 	*/
-	static std::unique_ptr<CommandServer> get(const std::string&, unsigned, int, bool = false);
+	static std::unique_ptr<CommandServer> get(const std::string&, unsigned, int, int, bool = false);
 
 	void serve();
 	void shut();

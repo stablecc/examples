@@ -16,7 +16,7 @@ struct AsyncFixture : public benchmark::Fixture
 
 	void SetUp(const benchmark::State& state)
 	{
-		serv = GrpcAsyncServer::get("0.0.0.0", 15430, state.range(0));
+		serv = GrpcAsyncServer::get("0.0.0.0", 15430, state.range(0), 2);
 		fut = std::async([&]()
 		{
 			serv->serve();
@@ -52,7 +52,7 @@ struct SyncFixture : public benchmark::Fixture
 
 	void SetUp(const benchmark::State& state)
 	{
-		serv = GrpcSyncServer::get("0.0.0.0", 15430, state.range(0));
+		serv = GrpcSyncServer::get("0.0.0.0", 15430, state.range(0), 2);
 		fut = std::async([&]()
 		{
 			serv->serve();
