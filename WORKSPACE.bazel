@@ -112,3 +112,10 @@ load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 grpc_deps()
 load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
 grpc_extra_deps()
+
+# https://github.com/bazelbuild/rules_go
+http_archive(
+	name = "io_bazel_rules_go",
+	strip_prefix = "rules_go-master",
+	urls = ["https://github.com/bazelbuild/rules_go/archive/refs/heads/master.zip"],
+)
