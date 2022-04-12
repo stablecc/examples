@@ -34,35 +34,43 @@ from concurrent import futures
 import logging
 import grpc
 import sys
+import signal
 
 import scc_pb2 as pb
 import scc_pb2_grpc as pb_grpc
 
+server = None
+
 class Command(pb_grpc.CommandServicer):
 	def Health(self, request, context):
-		print("got HealthRequest(", request.message, ")")
 		if request.message:
-			print("sending HealthReply(", request.message, ")")
 			return pb.HealthReply(message=request.message)
 		else:
-			print("sending HealthReply()")
 			return pb.HealthReply()
 
-def serve(host="0.0.0.0", port="1933"):
+if __name__ == '__main__':
+	print("args: [host] [port]")
+	logging.basicConfig()
+	host = "0.0.0.0"
+	port = "1933"
+	if len(sys.argv) > 1:
+		host = sys.argv[1]
+	if len(sys.argv) > 2:
+		port = sys.argv[2]
+
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=5))
 	pb_grpc.add_CommandServicer_to_server(Command(), server)
 	addr = host+":"+port
 	server.add_insecure_port(addr)
 	print("serving on", addr)
 	server.start()
-	server.wait_for_termination()
 
-if __name__ == '__main__':
-	logging.basicConfig()
-	host = "0.0.0.0"
-	port = "1933"
-	if len(sys.argv) > 1:
-		port = sys.argv[1]
-	if len(sys.argv) > 2:
-		host = sys.argv[2]
-	serve(host, port)
+	def handler(num, fr):
+		print("shutting down server")
+		# stop the server to cause the main thread to complete and exit
+		server.stop(1.0)
+
+	signal.signal(signal.SIGINT, handler)
+	signal.signal(signal.SIGTERM, handler)
+
+	server.wait_for_termination()

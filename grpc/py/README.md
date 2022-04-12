@@ -1,6 +1,8 @@
 # python grpc example
 
-Requires installation of grpc in python:
+Example of python grpc.
+
+Requires installation of grpc modules:
 ```
 $ python3 -m venv venv # create virtual environment
 $ . venv/bin/activate

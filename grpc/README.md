@@ -1,3 +1,3 @@
 # grpc examples
 
-Examples of a simple grpc service containing a health command.
+Examples of a grpc Health command.

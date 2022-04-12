@@ -37,29 +37,37 @@ import sys
 import scc_pb2 as pb
 import scc_pb2_grpc as pb_grpc
 
-def send(host="127.0.0.1", port="1933", message=None):
-	addr = host+":"+port
-	print("opening", host+":"+port)
+def send(host="127.0.0.1", port=1933, message=None, repeats=1):
+	addr = host+":"+str(port)
+	print("opening", addr)
 	conn = grpc.insecure_channel(addr)
 	cmd = pb_grpc.CommandStub(conn)
-	if message is None:
-		print("sending HealthRequest( )")
-		r = cmd.Health(pb.HealthRequest())
-	else:
-		print("sending HealthRequest(", message, ")")
-		r = cmd.Health(pb.HealthRequest(message=message))
-	return r.message
+	reply = ""
+
+	print("sending HealthRequest(", message, ") times", repeats)
+
+	for _ in range(1, repeats):
+		if message is None:
+			reply = cmd.Health(pb.HealthRequest())
+		else:
+			reply = cmd.Health(pb.HealthRequest(message=message))
+	
+	return reply.message
 
 if __name__ == '__main__':
-    logging.basicConfig()
-    host = "127.0.0.1"
-    port = "1933"
-    message = None
-    if len(sys.argv) > 1:
-        message = sys.argv[1]
-    if len(sys.argv) > 2:
-        host = sys.argv[2]
-    if len(sys.argv) > 3:
-        port = sys.argv[3]
-    r = send(host, port, message)
-    print("got HealthReply(", r, ")")
+	print("args: [message] [repeats] [host] [port]")
+	logging.basicConfig()
+	host = "127.0.0.1"
+	port = 1933
+	message = None
+	repeats = 1
+	if len(sys.argv) > 1:
+		message = sys.argv[1]
+	if len(sys.argv) > 2:
+		repeats = int(sys.argv[2])
+	if len(sys.argv) > 3:
+		host = sys.argv[3]
+	if len(sys.argv) > 4:
+		port = int(sys.argv[4])
+	r = send(host, port, message, repeats)
+	print("last HealthReply(", r, ")")
