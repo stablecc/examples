@@ -58,6 +58,7 @@ struct SyncFixture : public benchmark::Fixture
 			serv->serve();
 		});
 		cli.reset(new GrpcClient("127.0.0.1", 15430));
+		msg.resize(state.range(1), 'X');
 	}
 	void TearDown(const benchmark::State& state)
 	{

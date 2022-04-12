@@ -59,8 +59,6 @@ public:
 	: m_stub(Command::NewStub(channel))
 	{}
 
-	// Assembles the client's payload, sends it and presents the response back
-	// from the server.
 	std::string Health(const std::string& message)
 	{
 		HealthRequest request;
@@ -109,8 +107,11 @@ int main(int argc, char **argv)
 	using std::cout;
 	using std::cerr;
 
+	cout << "args: [message] [repeats] [host] [port]" << endl;
+
 	string host("127.0.0.1"), message;
 	unsigned port=1933;
+	int reps=1;
 
 	if (argc > 1)
 	{
@@ -118,27 +119,39 @@ int main(int argc, char **argv)
 	}
 	if (argc > 2)
 	{
-		host = argv[2];
+		reps = atoi(argv[2]);
 	}
 	if (argc > 3)
 	{
-		port = atoi(argv[3]);
+		host = argv[3];
+	}
+	if (argc > 4)
+	{
+		port = atoi(argv[4]);
 	}
 
 	cout << "creating client to " << host << ":" << port << endl;
 
 	GrpcClient c(host, port);
 
-	try
+	cout << "sending HealthRequest( " << message << " ) message " << reps << " times" << endl;
+
+	string reply;
+
+	for (int i = 0; i < reps; i++)
 	{
-		cout << "sending HealthRequest( " << message << " )" << endl;
-		auto r = c.health(message);
-		cout << "got HealthReply( " << r << " )" << endl;
+		try
+		{
+			reply = c.health(message);
+		}
+		catch (std::exception& ex)
+		{
+			cerr << "failed with error " << ex.what() << endl;
+			exit(1);
+		}
 	}
-	catch (std::exception& ex)
-	{
-		cerr << "failed with error " << ex.what() << endl;
-	}
+
+	cout << "last HealthReply( " << reply << " )" << endl;
 
 	return 0;
 }
